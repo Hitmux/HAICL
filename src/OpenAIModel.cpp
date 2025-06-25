@@ -11,6 +11,7 @@ OpenAIModel::OpenAIModel(const std::string& api_key, const std::string& base_url
 std::optional<Message> OpenAIModel::sendMessage(const std::vector<Message>& messages, const std::map<std::string, std::string>& model_params) {
     nlohmann::json request_body;
     request_body["model"] = model_name_;
+    request_body["stream"] = false;
 
     nlohmann::json messages_array = nlohmann::json::array();
     for (const auto& msg : messages) {

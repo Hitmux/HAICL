@@ -10,7 +10,7 @@ GoogleAIModel::GoogleAIModel(const std::string& api_key, const std::string& base
 
 std::optional<Message> GoogleAIModel::sendMessage(const std::vector<Message>& messages, const std::map<std::string, std::string>& model_params) {
     nlohmann::json request_body;
-    
+    request_body["stream"] = false;
     // Google AI (Gemini) API typically uses a 'contents' array for messages
     // and 'generationConfig' for model parameters.
     // This is a simplified mapping and might need adjustment based on specific Gemini API version.

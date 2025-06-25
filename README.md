@@ -85,13 +85,21 @@ HAICL会从以下位置按优先级加载配置（优先级从高到低）：
     "default_ai_model": "openai",
     "openai": {
         "api_key": "sk-from-config",
-        "base_url": "https://api.openai.com/v1-from-config",
-        "model_name": "gpt-4-from-config"
+        "base_url": "https://api.openai.com/v1",
+        "model_name": "gpt-4",
+        "model_params": {
+            "temperature": 0.9,
+            "max_tokens": 1048576
+        }
     },
     "google": {
         "api_key": "google-key-from-config",
         "base_url": "https://generativelanguage.googleapis.com-from-config",
-        "model_name": "gemini-pro-from-config"
+        "model_name": "gemini-2.5-pro",
+        "model_params": {
+            "temperature": 0.9,
+            "max_tokens": 1048576
+        }
     }
 }
 ```
