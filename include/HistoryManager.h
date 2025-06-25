@@ -5,6 +5,7 @@
 #include <vector>
 #include <filesystem>
 #include <optional>
+#include <cstdlib> // For std::getenv
 #include "IAIModel.h" // For Message struct
 #include "json.hpp"
 
@@ -12,7 +13,7 @@ namespace fs = std::filesystem;
 
 class HistoryManager {
 public:
-    HistoryManager(const std::string& history_dir = "./history");
+    HistoryManager(const std::string& history_dir = std::string(std::getenv("HOME")) + "/.history");
 
     // Saves a conversation to a new file.
     // conversation: Vector of Message objects representing the conversation.
@@ -49,5 +50,3 @@ private:
 };
 
 #endif // HAICL_HISTORY_MANAGER_H
-
-
