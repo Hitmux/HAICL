@@ -1,15 +1,67 @@
-
 #include "ConfigManager.h"
 #include <iostream>
 #include <fstream>
-#include <cstdlib> // For std::getenv
-#include <filesystem> // For std::filesystem::exists
+#include <cstdlib>      // For std::getenv
+#include <filesystem>   // For std::filesystem
 
 namespace fs = std::filesystem;
 
 ConfigManager::ConfigManager() {
-    // Initialize with empty JSON object
+    // Initialize with an empty JSON object.
     config_ = nlohmann::json::object();
+}
+
+// Gets the standard config directory path (~/.config/haicl).
+std::filesystem::path ConfigManager::getConfigPath() const {
+    const char* home_dir = std::getenv("HOME");
+    if (home_dir == nullptr) {
+        // Fallback to current dir if HOME is not set.
+        std::cerr << "Warning: HOME environment variable not set. Using current directory." << std::endl;
+        return fs::current_path();
+    }
+    return fs::path(home_dir) / ".config" / "haicl";
+}
+
+// Handles the entire config loading process.
+void ConfigManager::loadConfig() {
+    fs::path config_dir = getConfigPath();
+    fs::path config_file_path = config_dir / "config.json";
+
+    // 1. Create the config directory if it does not exist.
+    if (!fs::exists(config_dir)) {
+        try {
+            fs::create_directories(config_dir);
+        } catch (const fs::filesystem_error& e) {
+            std::cerr << "Error creating config directory " << config_dir << ": " << e.what() << std::endl;
+        }
+    }
+
+    // 2. Create a default config file if it does not exist.
+    if (!fs::exists(config_file_path)) {
+        std::cout << "Config file not found. Creating default at: " << config_file_path << std::endl;
+        std::ofstream ofs(config_file_path);
+        if (ofs.is_open()) {
+            nlohmann::json default_config = {
+                {"default_ai_model", "openai"},
+                {"openai", {
+                    {"model_name", "gpt-4"}
+                }},
+                {"google", {
+                    {"model_name", "gemini-pro"}
+                }}
+            };
+            ofs << default_config.dump(2); // Using dump(2) for pretty-printing.
+            ofs.close();
+        } else {
+            std::cerr << "Error creating default config file: " << config_file_path << std::endl;
+        }
+    }
+
+    // 3. Load environment variables first (higher priority).
+    loadEnvironmentVariables();
+
+    // 4. Then, load from the config file, merging into the existing config.
+    loadConfigFile(config_file_path.string());
 }
 
 void ConfigManager::loadEnvironmentVariables() {
@@ -51,6 +103,7 @@ void ConfigManager::loadEnvironmentVariables() {
     }
 }
 
+// Loads settings from a JSON file if it exists.
 void ConfigManager::loadConfigFile(const std::string& config_file_path) {
     if (fs::exists(config_file_path)) {
         std::ifstream ifs(config_file_path);
@@ -65,18 +118,10 @@ void ConfigManager::loadConfigFile(const std::string& config_file_path) {
         } else {
             std::cerr << "Warning: Could not open config file: " << config_file_path << std::endl;
         }
-    } else {
-        std::cerr << "Warning: Config file not found: " << config_file_path << std::endl;
     }
 }
 
-void ConfigManager::loadConfig(const std::string& config_file_path) {
-    // Load environment variables first
-    loadEnvironmentVariables();
-    // Then load from file, merging into existing config (env vars have higher priority)
-    loadConfigFile(config_file_path);
-}
-
+// Merges the source json into the target, prioritizing keys already in the target.
 void ConfigManager::mergeConfig(nlohmann::json& target, const nlohmann::json& source) {
     for (auto it = source.begin(); it != source.end(); ++it) {
         if (it.value().is_object()) {
@@ -86,7 +131,8 @@ void ConfigManager::mergeConfig(nlohmann::json& target, const nlohmann::json& so
                 target[it.key()] = it.value();
             }
         } else {
-            if (!target.contains(it.key())) { // Only add if not already present (from env vars)
+            // Only add if not already present (env vars have higher priority)
+            if (!target.contains(it.key())) { 
                 target[it.key()] = it.value();
             }
         }
@@ -95,7 +141,6 @@ void ConfigManager::mergeConfig(nlohmann::json& target, const nlohmann::json& so
 
 std::string ConfigManager::getString(const std::string& key, const std::string& default_value) const {
     try {
-        // Split key by "." for nested access
         nlohmann::json current_node = config_;
         size_t start = 0;
         size_t end = key.find(".");
@@ -174,7 +219,7 @@ std::map<std::string, std::string> ConfigManager::getModelParams(const std::stri
     try {
         if (config_.contains(model_type) && config_[model_type].contains("model_params") && config_[model_type]["model_params"].is_object()) {
             for (auto it = config_[model_type]["model_params"].begin(); it != config_[model_type]["model_params"].end(); ++it) {
-                params[it.key()] = it.value().dump(); // Store as string, convert later if needed
+                params[it.key()] = it.value().dump();
             }
         }
     } catch (const nlohmann::json::exception& e) {
@@ -182,5 +227,3 @@ std::map<std::string, std::string> ConfigManager::getModelParams(const std::stri
     }
     return params;
 }
-
-
